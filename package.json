@@ -7,16 +7,6 @@
   },
   "description": "calculator",
   "main": "index.js",
-  "scripts": {
-    "build": "webpack --mode production",
-    "start": "webpack-dev-server --open --mode development"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/AndreyButyrchik/Calculator.git"
-  },
-  "author": "Andrey Butyrchik",
-  "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.3",
     "decimal.js": "^10.0.1",
@@ -24,7 +14,7 @@
     "npm": "^6.4.1",
     "react": "^16.5.0",
     "react-dom": "^16.5.0",
-    "wolfram-alpha-api": "https://products.wolframalpha.com/api/libraries/javascript/wolfram-alpha-api-1.0.0-rc.1.tgz"
+    "wolfram-alpha-api": "^1.0.0-rc.1"
   },
   "devDependencies": {
     "@babel/core": "^7.1.0",
@@ -54,8 +44,15 @@
     "webpack-cli": "^3.1.1",
     "webpack-dev-server": "^3.1.8"
   },
-  "keywords": [],
-  "proxy": "http://localhost:3000",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndreyButyrchik/Calculator.git"
+  },
+  "author": "",
+  "license": "ISC",
   "bugs": {
     "url": "https://github.com/AndreyButyrchik/Calculator/issues"
   },
