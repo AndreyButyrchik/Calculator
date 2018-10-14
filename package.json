@@ -13,7 +13,7 @@
     "express": "^4.16.3",
     "react": "^16.5.0",
     "react-dom": "^16.5.0",
-    "wolfram-alpha": "^0.6.0",
+    "react-number-format": "^3.6.2",
     "wolfram-alpha-api": "https://products.wolframalpha.com/api/libraries/javascript/wolfram-alpha-api-1.0.0-rc.1.tgz"
   },
   "devDependencies": {
@@ -34,7 +34,6 @@
     "eslint-plugin-react": "^7.11.1",
     "file-loader": "^2.0.0",
     "html-webpack-plugin": "^3.2.0",
-    "i": "^0.3.6",
     "mini-css-extract-plugin": "^0.4.3",
     "node-sass": "^4.9.3",
     "npm": "^6.4.1",
@@ -48,7 +47,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node index.js",
+    "debug": "webpack-dev-server --open --mode development"
   },
   "repository": {
     "type": "git",

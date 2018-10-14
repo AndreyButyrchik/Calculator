@@ -15,4 +15,7 @@
 .cheat {
 	position: fixed;
 	top: 0;
+	display: flex;
+	justify-content: baseline;
+	align-items: inherit;
 }

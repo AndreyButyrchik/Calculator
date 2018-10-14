@@ -9,10 +9,10 @@ import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
 import LinearProgress from '@material-ui/core/LinearProgress';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Checkbox from '@material-ui/core/Checkbox';
 import green from '@material-ui/core/colors/green';
 import { ValidatorForm, TextValidator} from 'react-material-ui-form-validator';
+import NumberFormat from 'react-number-format';
 
 import './style.scss';
 import { withStyles } from '@material-ui/core';
@@ -35,22 +35,54 @@ class App extends React.Component {
 		this.onChangeLeftOperand = this.onChangeLeftOperand.bind(this);
 		this.calculate = this.calculate.bind(this);
 		this.handleChange = this.handleChange.bind(this);
+		this.formatNumber = this.formatNumber.bind(this);
+		this.NumberFormatCustom = this.NumberFormatCustom.bind(this);
 	}
 
 	componentDidMount() {
 		ValidatorForm.addValidationRule('range', value => {
-			if (value > 10e+15 || value < -10e+15) {
+			let dotNumber = value.replace(',', '.');
+			let formatNumber = dotNumber.replace(/\s/g, '');
+			if (Number(formatNumber) > 10e+15 || Number(formatNumber) < -10e+15) {
 				return false;
 			}
 			return true;
 		});
 		ValidatorForm.addValidationRule('float', value => {
-			const float = value.split('.')[1];
+			const formatNumber = value.replace(',', '.');
+			const float = formatNumber.split('.')[1];
 			if (float && float.length > 2) {
 				return false;
 			}
 			return true;
 		});
+		ValidatorForm.addValidationRule('pattern', value => {
+			const reg = new RegExp(/^(\d+\s?)+(,\d+)*(\.\d+)?$/);
+			if (reg.test(value)) {
+				return true;
+			}
+			return false;
+		});
+	}
+
+	NumberFormatCustom(props) {
+		const { inputRef, onChange, ...other } = props;
+		return (
+			<NumberFormat
+				{...other}
+				getInputRef={inputRef}
+				onValueChange={values => {
+					onChange({
+						target: {
+							value: values.value,
+						},
+					});
+				}}
+				decimalSeparator="."
+				decimalScale={2}
+				thousandSeparator=" "
+			/>
+		);
 	}
 
 	handleChange() {
@@ -71,6 +103,10 @@ class App extends React.Component {
 		});
 	}
 
+	formatNumber (x) {
+		return x  && x !== 'Dividing by zero is impossible' ? parseFloat(x.replace(/\s/g, '')).toLocaleString().replace(',', '.') : x;
+	}
+
 	onChangeLeftOperand(event) {
 		this.setState({
 			leftOperand: event.target.value
@@ -84,7 +120,7 @@ class App extends React.Component {
 			});
 			const body = JSON.stringify(
 				{
-					lOperand: this.state.leftOperand.replace(',', '.'), 
+					lOperand: this.state.leftOperand.replace(',', '.'),
 					operator: this.state.operator, 
 					rOperand: this.state.rightOperand.replace(',', '.')
 				}
@@ -99,21 +135,34 @@ class App extends React.Component {
 			});
 			const res = await fetch('/calculate', config);
 			const answer = await res.json();
-			console.log(answer);
 			await this.setState({
 				loading: false,
 				answer: answer.pods[1].subpods[0].plaintext
 			});
 		}
 		else {
-			const lOperand = new Decimal(this.state.leftOperand.replace(',', '.'));
-			const rOperand = new Decimal(this.state.rightOperand.replace(',', '.'));
+			const lOperand = new Decimal(this.state.leftOperand.replace(',', '.').replace(/\s/g, ''));
+			const rOperand = new Decimal(this.state.rightOperand.replace(',', '.').replace(/\s/g, ''));
 			let answer;
-			if (this.state.operator === '+') {
-				answer = lOperand.plus(rOperand);
-			}
-			else {
-				answer = lOperand.minus(rOperand);
+			switch (this.state.operator) {
+				case '+':
+					answer = lOperand.plus(rOperand);
+					break;
+				case '-':
+					answer = lOperand.minus(rOperand);
+					break;
+				case '*':
+					answer = lOperand.mul(rOperand);
+					break;
+				case '/':
+					if (rOperand.equals(new Decimal('0'))) {
+						answer = 'Dividing by zero is impossible';
+					} else {
+						answer = lOperand.dividedBy(rOperand).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+					}
+					break;
+				default:
+					break;
 			}
 			this.setState({
 				answer: answer.toString()
@@ -126,7 +175,9 @@ class App extends React.Component {
 
 		const operators = [
 			{value: '+', label: '+'},
-			{value: '-', label: '-'}
+			{value: '-', label: '-'},
+			{value: '*', label: '*'},
+			{value: '/', label: '/'}
 		];
 
 		const CustomSelect = withStyles({
@@ -138,16 +189,16 @@ class App extends React.Component {
 		return (
 			<div className="container">
 				<div className="cheat">
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={this.state.checkedG}
-								onChange={this.handleChange}
-								value={this.state.cheatMode}
-							/>
-						}
-						label="Cheat mode"
+					<Checkbox
+						checked={this.state.checkedG}
+						onChange={this.handleChange}
+						value={this.state.cheatMode}
 					/>
+					<div>
+						<Typography variant="h6">
+							Cheat mode
+						</Typography>
+					</div>
 				</div>
 				<CssBaseline />
 				<ValidatorForm
@@ -156,17 +207,18 @@ class App extends React.Component {
 				>
 					<Grid container alignItems="center" spacing={16}>
 						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
-							<TextValidator 
-								type="number"
+							<TextValidator
+								type="text"
 								name="left-operand"
 								id="left-operand" 
 								variant="outlined"
 								label="Enter left operand"
+								autoComplete="off"
 								className={classes.w100}
 								value={this.state.leftOperand} 
 								onChange={this.onChangeLeftOperand}
-								validators={['required', 'range', 'float']}
-								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range']}
+								validators={['required', 'range', 'float', 'pattern']}
+								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
 							/>
 						</Grid>
 						<Grid className={classes.fixedHeight} item>
@@ -185,23 +237,23 @@ class App extends React.Component {
 							</CustomSelect>
 						</Grid>
 						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
-							<TextValidator 
-								type="number" 
+							<TextValidator
 								name="right-operand"
 								id="right-operand" 
 								variant="outlined"
+								autoComplete="off"
 								label="Enter right operand"
 								className={classes.w100}
 								value={this.state.rightOperand} 
 								onChange={this.onChangeRightOperand}
-								validators={['required', 'range', 'float']}
-								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range']}
+								validators={['required', 'range', 'float', 'pattern']}
+								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
 							/>
 						</Grid>
 					</Grid>
 					<Paper className={classNames(classes.root, classes.typography)} align="center" elevation={1}>
-						<Typography title="true" component="h2">
-							{this.state.answer}
+						<Typography variant="h6">
+							{this.formatNumber(this.state.answer)}
 						</Typography>
 					</Paper>
 					<Button 
@@ -215,7 +267,7 @@ class App extends React.Component {
 					<LinearProgress style={{visibility: this.state.loading ? 'visible' : 'hidden'}} color="secondary" variant="query"/>
 				</ValidatorForm>
 				<div className="contact">
-					<Typography variant="display1" gutterBottom>
+					<Typography variant="h4" gutterBottom>
 						Бутырчик Андрей Дмитриевич<br/> 3 курс 13 группа<br/> 2018 г.
 					</Typography>
 				</div>
@@ -241,7 +293,8 @@ const styles =  theme => ({
 	},
 	typography: {
 		marginTop: theme.spacing.unit * 8,
-		height: '3.2rem'
+		height: '3.2rem',
+		useNextVariants: true
 	},
 	button: {
 		marginTop: theme.spacing.unit,
