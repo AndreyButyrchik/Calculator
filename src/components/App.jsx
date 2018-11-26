@@ -13,6 +13,11 @@ import Checkbox from '@material-ui/core/Checkbox';
 import green from '@material-ui/core/colors/green';
 import { ValidatorForm, TextValidator} from 'react-material-ui-form-validator';
 import NumberFormat from 'react-number-format';
+import FormControl from '@material-ui/core/FormControl';
+import FormLabel from '@material-ui/core/FormLabel';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import RadioGroup from '@material-ui/core/RadioGroup';
+import Radio from '@material-ui/core/Radio';
 
 import './style.scss';
 import { withStyles } from '@material-ui/core';
@@ -22,21 +27,33 @@ class App extends React.Component {
 	constructor() {
 		super();
 		this.state = {
-			operator: '+',
-			leftOperand: '',
-			rightOperand: '',
+			firstOperator: '+',
+			secondOperator: '+',
+			thirdOperator: '+',
+			firstOperand: '0',
+			secondOperand: '0',
+			thirdOperand: '0',
+			fourthOperand: '0',
 			loading: false,
 			answer: '',
-			cheatMode: 'false'
+			cheatMode: 'false',
+			rounding: 'math',
+			roundAnswer: '',
 		};
 
-		this.handleChangeOperator = this.handleChangeOperator.bind(this);
-		this.onChangeRightOperand = this.onChangeRightOperand.bind(this);
-		this.onChangeLeftOperand = this.onChangeLeftOperand.bind(this);
+		this.handleChangeFirstOperator = this.handleChangeFirstOperator.bind(this);
+		this.handleChangeSecondOperator = this.handleChangeSecondOperator.bind(this);
+		this.handleChangeThirdOperator = this.handleChangeThirdOperator.bind(this);
+		this.onChangeSecondOperand = this.onChangeSecondOperand.bind(this);
+		this.onChangeFirstOperand = this.onChangeFirstOperand.bind(this);
+		this.onChangeThirdOperand = this.onChangeThirdOperand.bind(this);
+		this.onChangeFourthOperand = this.onChangeFourthOperand.bind(this);
 		this.calculate = this.calculate.bind(this);
 		this.handleChange = this.handleChange.bind(this);
 		this.formatNumber = this.formatNumber.bind(this);
 		this.NumberFormatCustom = this.NumberFormatCustom.bind(this);
+		this.addSpaces = this.addSpaces.bind(this);
+		this.handleChangeRounding = this.handleChangeRounding.bind(this);
 	}
 
 	componentDidMount() {
@@ -57,7 +74,7 @@ class App extends React.Component {
 			return true;
 		});
 		ValidatorForm.addValidationRule('pattern', value => {
-			const reg = new RegExp(/^(\d+\s?)+(,\d+)*(\.\d+)?$/);
+			const reg = new RegExp(/^-?(\d+\s?)+(,\d+)*(\.\d+)?$/);
 			if (reg.test(value)) {
 				return true;
 			}
@@ -91,25 +108,95 @@ class App extends React.Component {
 		});
 	}
 
-	handleChangeOperator(event) {
+	handleChangeFirstOperator(event) {
 		this.setState({
-			operator: event.target.value
+			firstOperator: event.target.value
 		});
 	}
 
-	onChangeRightOperand(event) {
+	handleChangeSecondOperator(event) {
 		this.setState({
-			rightOperand: event.target.value
+			secondOperator: event.target.value
+		});
+	}
+
+	handleChangeThirdOperator(event) {
+		this.setState({
+			thirdOperator: event.target.value
+		});
+	}
+
+	onChangeSecondOperand(event) {
+		this.setState({
+			secondOperand: event.target.value
+		});
+	}
+
+	onChangeFirstOperand(event) {
+		this.setState({
+			firstOperand: event.target.value
+		});
+	}
+
+	onChangeThirdOperand(event) {
+		this.setState({
+			thirdOperand: event.target.value
+		});
+	}
+
+	onChangeFourthOperand(event) {
+		this.setState({
+			fourthOperand: event.target.value
 		});
 	}
 
 	formatNumber (x) {
-		return x  && x !== 'Dividing by zero is impossible' ? parseFloat(x.replace(/\s/g, '')).toLocaleString().replace(',', '.') : x;
+		return x  && x !== 'Dividing by zero is impossible' ? this.addSpaces(x) : x;
 	}
 
-	onChangeLeftOperand(event) {
+	addSpaces(x) {
+		const newX = x.split('.')[0];
+		const _x = newX.split('');
+		let j = 0;
+		for (let i = _x.length; i > 0; i--) {
+			if(j === 3) {
+				_x.splice(i, 0, ' ');
+				j = 0;
+			}
+			j++;
+		}
+		let a = '';
+		if(x.split('.')[1]) {
+			a = x.split('.')[1];
+		}
+		return a ? _x.join('') + '.' + a : _x.join('');
+	}
+
+	handleChangeRounding(event) {
+		let answer = this.state.answer;
+		let roundAnswer = '';
+		if (answer) {
+			switch (event.target.value) {
+				case 'math':
+					Decimal.set({ rounding: Decimal.ROUND_HALF_UP })
+					roundAnswer = new Decimal(answer).round();
+					break;
+				case 'banking':
+					Decimal.set({ rounding: Decimal.ROUND_HALF_EVEN })
+					roundAnswer = new Decimal(answer).round();
+					break;
+				case 'truncation':
+					Decimal.set({ rounding: Decimal.ROUND_DOWN })
+					roundAnswer = new Decimal(answer).round();
+					break;
+				default:
+					break;
+			}
+		}
+
 		this.setState({
-			leftOperand: event.target.value
+			rounding: event.target.value,
+			roundAnswer: roundAnswer.toString()
 		});
 	}
 
@@ -120,9 +207,9 @@ class App extends React.Component {
 			});
 			const body = JSON.stringify(
 				{
-					lOperand: this.state.leftOperand.replace(',', '.'),
-					operator: this.state.operator, 
-					rOperand: this.state.rightOperand.replace(',', '.')
+					lOperand: this.state.firstOperand.replace(',', '.'),
+					operator: this.state.firstOperator, 
+					rOperand: this.state.secondOperand.replace(',', '.')
 				}
 			);
 			const config = {
@@ -141,31 +228,145 @@ class App extends React.Component {
 			});
 		}
 		else {
-			const lOperand = new Decimal(this.state.leftOperand.replace(',', '.').replace(/\s/g, ''));
-			const rOperand = new Decimal(this.state.rightOperand.replace(',', '.').replace(/\s/g, ''));
-			let answer;
-			switch (this.state.operator) {
-				case '+':
-					answer = lOperand.plus(rOperand);
-					break;
-				case '-':
-					answer = lOperand.minus(rOperand);
-					break;
-				case '*':
-					answer = lOperand.mul(rOperand);
-					break;
-				case '/':
-					if (rOperand.equals(new Decimal('0'))) {
-						answer = 'Dividing by zero is impossible';
-					} else {
-						answer = lOperand.dividedBy(rOperand).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+			const firstOperand = new Decimal(this.state.firstOperand.replace(',', '.').replace(/\s/g, ''));
+			const secondOperand = new Decimal(this.state.secondOperand.replace(',', '.').replace(/\s/g, ''));
+			const thirdOperand = new Decimal(this.state.thirdOperand.replace(',', '.').replace(/\s/g, ''));
+			const fourthOperand = new Decimal(this.state.fourthOperand.replace(',', '.').replace(/\s/g, ''));
+			let answer, roundAnswer;
+			Decimal.set({ rounding: Decimal.ROUND_HALF_UP })
+			try {
+				switch (this.state.secondOperator) {
+					case '+':
+						answer = secondOperand.plus(thirdOperand);
+						break;
+					case '-':
+						answer = secondOperand.minus(thirdOperand);
+						break;
+					case '*':
+						answer = secondOperand.mul(thirdOperand);
+						break;
+					case '/':
+						if (thirdOperand.equals(new Decimal('0'))) {
+							throw 'Dividing by zero is impossible';
+						} else {
+							answer = secondOperand.dividedBy(thirdOperand).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+						}
+						break;
+					default:
+						break;
+				}
+				if ((this.state.thirdOperator === '*' || this.state.thirdOperator === '/') && this.state.firstOperator !== '/') {
+					console.log('before: ' + answer);
+					switch (this.state.thirdOperator) {
+						case '+':
+							answer = answer.plus(fourthOperand);
+							break;
+						case '-':
+							answer = answer.minus(fourthOperand);
+							break;
+						case '*':
+							answer = answer.mul(fourthOperand);
+							break;
+						case '/':
+							if (fourthOperand.equals(new Decimal('0'))) {
+								throw 'Dividing by zero is impossible';
+							} else {
+								answer = answer.dividedBy(fourthOperand).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+							}
+							break;
+						default:
+							break;
 					}
+					console.log('after: ' + answer);
+					switch (this.state.firstOperator) {
+						case '+':
+							answer = answer.plus(firstOperand);
+							break;
+						case '-':
+							answer = firstOperand.minus(answer);
+							break;
+						case '*':
+							answer = answer.mul(firstOperand);
+							break;
+						case '/':
+							if (answer.equals(new Decimal('0'))) {
+								throw 'Dividing by zero is impossible';
+							} else {
+								answer = firstOperand.dividedBy(answer).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+							}
+							break;
+						default:
+							break;
+					}
+					console.log('finish: ' + answer);
+				} else {
+					switch (this.state.firstOperator) {
+						case '+':
+							answer = firstOperand.plus(answer);
+							break;
+						case '-':
+							answer = firstOperand.minus(answer);
+							break;
+						case '*':
+							answer = firstOperand.mul(answer);
+							break;
+						case '/':
+							if (answer.equals(new Decimal('0'))) {
+								throw 'Dividing by zero is impossible';
+							} else {
+								answer = firstOperand.dividedBy(answer).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+							}
+							break;
+						default:
+							break;
+					}
+
+					switch (this.state.thirdOperator) {
+						case '+':
+							answer = answer.plus(fourthOperand);
+							break;
+						case '-':
+							answer = answer.minus(fourthOperand);
+							break;
+						case '*':
+							answer = answer.mul(thirdOperand);
+							break;
+						case '/':
+							if (fourthOperand.equals(new Decimal('0'))) {
+								throw 'Dividing by zero is impossible';
+							} else {
+								answer = answer.dividedBy(fourthOperand).mul(new Decimal('100')).round().dividedBy(new Decimal('100'));
+							}
+							break;
+						default:
+							break;
+					}
+				}
+			} catch (err) {
+				answer = 'Dividing by zero is impossible';
+				roundAnswer = 'Dividing by zero is impossible';
+			}
+			
+			switch (this.state.rounding) {
+				case 'math':
+					Decimal.set({ rounding: Decimal.ROUND_HALF_UP })
+					roundAnswer = new Decimal(answer).round();
+					break;
+				case 'banking':
+					Decimal.set({ rounding: Decimal.ROUND_HALF_EVEN })
+					roundAnswer = new Decimal(answer).round();
+					break;
+				case 'truncation':
+					Decimal.set({ rounding: Decimal.ROUND_DOWN })
+					roundAnswer = new Decimal(answer).round();
 					break;
 				default:
 					break;
 			}
+
 			this.setState({
-				answer: answer.toString()
+				answer: answer.toString(),
+				roundAnswer: roundAnswer.toString()
 			});
 		}
 	}
@@ -188,7 +389,7 @@ class App extends React.Component {
 
 		return (
 			<div className="container">
-				<div className="cheat">
+				{/* <div className="cheat">
 					<Checkbox
 						checked={this.state.checkedG}
 						onChange={this.handleChange}
@@ -199,7 +400,7 @@ class App extends React.Component {
 							Cheat mode
 						</Typography>
 					</div>
-				</div>
+				</div> */}
 				<CssBaseline />
 				<ValidatorForm
 					onSubmit={this.calculate}
@@ -209,24 +410,58 @@ class App extends React.Component {
 						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
 							<TextValidator
 								type="text"
-								name="left-operand"
-								id="left-operand" 
+								name="first-operand"
+								id="first-operand" 
 								variant="outlined"
-								label="Enter left operand"
+								label="Enter first operand"
 								autoComplete="off"
 								className={classes.w100}
-								value={this.state.leftOperand} 
-								onChange={this.onChangeLeftOperand}
+								value={this.state.firstOperand} 
+								onChange={this.onChangeFirstOperand}
 								validators={['required', 'range', 'float', 'pattern']}
 								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
 							/>
 						</Grid>
 						<Grid className={classes.fixedHeight} item>
 							<CustomSelect
-								id="operator"
+								id="firstOperator"
 								select
-								value={this.state.operator}
-								onChange={this.handleChangeOperator}
+								value={this.state.firstOperator}
+								onChange={this.handleChangeFirstOperator}
+								variant="outlined"
+							>
+								{operators.map(item => (
+									<MenuItem key={item.value} value={item.value}>
+										{item.label}
+									</MenuItem>
+								))}
+							</CustomSelect>
+						</Grid>
+						<Grid className={classNames(classes.fixedHeight)} item>
+							<Typography variant="h3">
+								(
+							</Typography>
+						</Grid>
+						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
+							<TextValidator
+								name="second-operand"
+								id="second-operand" 
+								variant="outlined"
+								autoComplete="off"
+								label="Enter second operand"
+								className={classes.w100}
+								value={this.state.secondOperand} 
+								onChange={this.onChangeSecondOperand}
+								validators={['required', 'range', 'float', 'pattern']}
+								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
+							/>
+						</Grid>
+						<Grid className={classes.fixedHeight} item>
+							<CustomSelect
+								id="secondOperator"
+								select
+								value={this.state.secondOperator}
+								onChange={this.handleChangeSecondOperator}
 								variant="outlined"
 							>
 								{operators.map(item => (
@@ -238,14 +473,48 @@ class App extends React.Component {
 						</Grid>
 						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
 							<TextValidator
-								name="right-operand"
-								id="right-operand" 
+								name="third-operand"
+								id="third-operand" 
 								variant="outlined"
 								autoComplete="off"
-								label="Enter right operand"
+								label="Enter third operand"
 								className={classes.w100}
-								value={this.state.rightOperand} 
-								onChange={this.onChangeRightOperand}
+								value={this.state.thirdOperand} 
+								onChange={this.onChangeThirdOperand}
+								validators={['required', 'range', 'float', 'pattern']}
+								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
+							/>
+						</Grid>
+						<Grid className={classNames(classes.fixedHeight)} item>
+							<Typography variant="h3">
+								)
+							</Typography>
+						</Grid>
+						<Grid className={classes.fixedHeight} item>
+							<CustomSelect
+								id="thirdOperator"
+								select
+								value={this.state.thirdOperator}
+								onChange={this.handleChangeThirdOperator}
+								variant="outlined"
+							>
+								{operators.map(item => (
+									<MenuItem key={item.value} value={item.value}>
+										{item.label}
+									</MenuItem>
+								))}
+							</CustomSelect>
+						</Grid>
+						<Grid className={classNames(classes.flex1, classes.fixedHeight)} item>
+							<TextValidator
+								name="fourth-operand"
+								id="fourth-operand" 
+								variant="outlined"
+								autoComplete="off"
+								label="Enter fourth operand"
+								className={classes.w100}
+								value={this.state.fourthOperand} 
+								onChange={this.onChangeFourthOperand}
 								validators={['required', 'range', 'float', 'pattern']}
 								errorMessages={['this field is required', 'this field is out off range', 'float number is out of range', 'invalid number format']}
 							/>
@@ -254,6 +523,25 @@ class App extends React.Component {
 					<Paper className={classNames(classes.root, classes.typography)} align="center" elevation={1}>
 						<Typography variant="h6">
 							{this.formatNumber(this.state.answer)}
+						</Typography>
+					</Paper>
+					<FormControl style={{marginTop: '2rem'}} component="fieldset">
+						<FormLabel>Rounding</FormLabel>
+						<RadioGroup
+							row
+							name="color"
+							aria-label="color"
+							value={this.state.rounding}
+							onChange={this.handleChangeRounding}
+						>
+							<FormControlLabel value="math" control={<Radio />} label="math" />
+							<FormControlLabel value="banking" control={<Radio />} label="banking" />
+							<FormControlLabel value="truncation" control={<Radio />} label="truncation" />
+						</RadioGroup>
+					</FormControl>
+					<Paper className={classNames(classes.root)} align="center" elevation={1}>
+						<Typography variant="h6">
+							{this.formatNumber(this.state.roundAnswer)}
 						</Typography>
 					</Paper>
 					<Button 
